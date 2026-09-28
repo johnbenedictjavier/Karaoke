@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="karaokeHub keeps your personal karaoke numbers organized and ready to sing."
+    />
+    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>karaokeHub</title>
+    <script>
+      (() => {
+        try {
+          const saved = localStorage.getItem("karaokehub-theme");
+          const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.dataset.theme = theme;
+        } catch {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+  <body class="is-booting">
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <div id="boot-screen" class="boot-screen" aria-label="Loading karaokeHub">
+      <div class="brand-mark brand-mark-large" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="img">
+          <path d="M16 10a8 8 0 0 1 16 0v12a8 8 0 0 1-16 0V10Z" />
+          <path d="M11 21v1a13 13 0 0 0 26 0v-1M24 35v7M17 42h14" />
+        </svg>
+      </div>
+      <span class="boot-pulse"></span>
+    </div>
+
+    <main id="auth-view" class="auth-view" hidden>
+      <button class="icon-button auth-theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">
+        <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+        </svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
+        </svg>
+      </button>
+
+      <section class="auth-shell" aria-labelledby="auth-title">
+        <div class="auth-showcase">
+          <div class="showcase-brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M16 10a8 8 0 0 1 16 0v12a8 8 0 0 1-16 0V10Z" />
+                <path d="M11 21v1a13 13 0 0 0 26 0v-1M24 35v7M17 42h14" />
+              </svg>
+            </span>
+            <span class="brand-name brand-name-inverse">karaoke<span>Hub</span></span>
+          </div>
+
+          <div class="showcase-copy">
+            <span class="eyebrow eyebrow-inverse">Your songs. Your stage.</span>
+            <h1>Every karaoke number, ready when you are.</h1>
+            <p>Build your personal songbook and find the next crowd favorite in seconds.</p>
+          </div>
+
+          <div class="showcase-visual" aria-hidden="true">
+            <div class="vinyl vinyl-back"><span></span></div>
+            <div class="sample-card">
+              <span class="sample-number">1847</span>
+              <span class="sample-copy"><strong>Dancing Queen</strong><small>ABBA</small></span>
+              <span class="sample-bars"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="vinyl vinyl-front"><span></span></div>
+          </div>
+        </div>
+
+        <div class="auth-card-wrap">
+          <div class="mobile-brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M16 10a8 8 0 0 1 16 0v12a8 8 0 0 1-16 0V10Z" />
+                <path d="M11 21v1a13 13 0 0 0 26 0v-1M24 35v7M17 42h14" />
+              </svg>
+            </span>
+            <span class="brand-name">karaoke<span>Hub</span></span>
+          </div>
+
+          <div class="auth-card">
+            <div class="auth-heading">
+              <span class="eyebrow" id="auth-eyebrow">Welcome back</span>
+              <h2 id="auth-title">Sign in to your songbook</h2>
+              <p id="auth-description">Your setlist is waiting for you.</p>
+            </div>
+
+            <div class="auth-tabs" role="tablist" aria-label="Account action">
+              <button id="login-tab" class="auth-tab is-active" type="button" role="tab" aria-selected="true">Sign in</button>
+              <button id="signup-tab" class="auth-tab" type="button" role="tab" aria-selected="false">Create account</button>
+            </div>
+
+            <form id="auth-form" novalidate>
+              <label class="field-label" for="auth-name">Name</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path>
+                </svg>
+                <input
+                  id="auth-name"
+                  name="name"
+                  type="text"
+                  minlength="1"
+                  maxlength="40"
+                  autocomplete="username"
+                  autocapitalize="words"
+                  placeholder="Enter your name"
+                  required
+                />
+              </div>
+
+              <label class="field-label" for="auth-password">Password</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="10" width="16" height="11" rx="3"></rect>
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14.5v2"></path>
+                </svg>
+                <input
+                  id="auth-password"
+                  name="password"
+                  type="password"
+                  minlength="6"
+                  maxlength="72"
+                  autocomplete="current-password"
+                  placeholder="At least 6 characters"
+                  required
+                />
+                <button id="password-toggle" class="password-toggle" type="button" aria-label="Show password">
+                  <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                  </svg>
+                  <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m4 4 16 16M10.6 6.1A10.2 10.2 0 0 1 12 6c6 0 9.5 6 9.5 6a16.8 16.8 0 0 1-2.1 2.8M6.5 7.1C3.9 8.8 2.5 12 2.5 12s3.5 6 9.5 6c1.2 0 2.3-.2 3.3-.6M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div id="auth-error" class="form-message" role="alert" hidden></div>
+
+              <button id="auth-submit" class="primary-button auth-submit" type="submit">
+                <span id="auth-submit-label">Sign in</span>
+                <span class="button-spinner" aria-hidden="true"></span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"></path></svg>
+              </button>
+            </form>
+
+            <p class="auth-footnote" id="auth-footnote">
+              New to karaokeHub?
+              <button id="auth-switch" type="button">Create an account</button>
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="app-view" class="app-view" hidden>
+      <header class="app-header">
+        <div class="app-header-inner">
+          <a class="app-brand" href="#" aria-label="karaokeHub home">
+            <span class="brand-mark brand-mark-small" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M16 10a8 8 0 0 1 16 0v12a8 8 0 0 1-16 0V10Z" />
+                <path d="M11 21v1a13 13 0 0 0 26 0v-1M24 35v7M17 42h14" />
+              </svg>
+            </span>
+            <span class="brand-name">karaoke<span>Hub</span></span>
+          </a>
+
+          <div class="header-actions">
+            <button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">
+              <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+              </svg>
+              <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
+              </svg>
+            </button>
+            <div class="user-chip" aria-label="Current account">
+              <span id="user-initial" class="user-initial">K</span>
+              <span id="user-name" class="user-name">Singer</span>
+            </div>
+            <button id="logout-button" class="secondary-button logout-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10"></path></svg>
+              <span>Log out</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="dashboard-heading" aria-labelledby="playlist-title">
+          <div>
+            <span class="eyebrow">Personal songbook</span>
+            <h1 id="playlist-title">Your karaoke playlist</h1>
+            <p id="playlist-summary">Keep every go-to song close at hand.</p>
+          </div>
+          <button id="add-entry-button" class="primary-button add-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            <span>Add karaoke</span>
+          </button>
+        </section>
+
+        <section class="playlist-panel" aria-label="Karaoke playlist">
+          <div class="search-toolbar">
+            <div class="search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+              <input id="search-input" type="search" autocomplete="off" placeholder="Search by song..." aria-label="Search playlist" />
+              <button id="clear-search" class="clear-search" type="button" aria-label="Clear search" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+              </button>
+            </div>
+
+            <label class="filter-select-wrap" for="search-field-select">
+              <span>Search by</span>
+              <select id="search-field-select">
+                <option value="song_title">Song</option>
+                <option value="singer">Singer</option>
+              </select>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"></path></svg>
+            </label>
+          </div>
+
+          <div class="list-meta">
+            <p id="results-label" aria-live="polite">Loading your songs...</p>
+            <span class="list-key"><i></i> Synced securely</span>
+          </div>
+
+          <div id="list-loading" class="list-loading" aria-label="Loading karaoke entries">
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+          </div>
+
+          <ul id="entry-list" class="entry-list" aria-label="Saved karaoke songs" hidden></ul>
+
+          <div id="empty-state" class="empty-state" hidden>
+            <div class="empty-art" aria-hidden="true">
+              <span class="empty-disc"></span>
+              <svg viewBox="0 0 48 48"><path d="M17 10a7 7 0 0 1 14 0v11a7 7 0 0 1-14 0V10Z"></path><path d="M12 20v1a12 12 0 0 0 24 0v-1M24 33v8M18 41h12"></path></svg>
+            </div>
+            <h2 id="empty-title">No Karaoke Numbers Yet</h2>
+            <p id="empty-description">Add your first song and start building a setlist that is always ready.</p>
+            <button id="empty-add-button" class="secondary-button empty-add" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+              Add your first song
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">Made for the next song in your queue.</footer>
+    </div>
+
+    <dialog id="entry-dialog" class="modal entry-modal" aria-labelledby="entry-dialog-title">
+      <form id="entry-form" novalidate>
+        <div class="modal-header">
+          <div>
+            <span id="entry-dialog-eyebrow" class="eyebrow">New entry</span>
+            <h2 id="entry-dialog-title">Add karaoke</h2>
+            <p id="entry-dialog-description">Save a song to your personal playlist.</p>
+          </div>
+          <button class="modal-close" type="button" data-close-dialog aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <label class="field-label" for="entry-number">Karaoke number</label>
+          <div class="input-wrap input-wrap-modal">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 8h6M9 12h6M9 16h3"></path></svg>
+            <input id="entry-number" name="karaokeNumber" type="text" maxlength="24" autocomplete="off" placeholder="e.g. 1847" required />
+          </div>
+
+          <label class="field-label" for="entry-song">Song name</label>
+          <div class="input-wrap input-wrap-modal">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13M9 9l10-2"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>
+            <input id="entry-song" name="song" type="text" maxlength="120" autocomplete="off" placeholder="Enter song title" required />
+          </div>
+
+          <label class="field-label" for="entry-singer">Singer</label>
+          <div class="input-wrap input-wrap-modal">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg>
+            <input id="entry-singer" name="singer" type="text" maxlength="100" autocomplete="off" placeholder="Enter singer or artist" required />
+          </div>
+
+          <div id="entry-error" class="form-message" role="alert" hidden></div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-close-dialog>Cancel</button>
+          <button id="entry-submit" class="primary-button" type="submit">
+            <span id="entry-submit-label">Add to playlist</span>
+            <span class="button-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="modal confirm-modal" aria-labelledby="confirm-title">
+      <div class="confirm-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg>
+      </div>
+      <h2 id="confirm-title">Delete this song?</h2>
+      <p id="confirm-description">This entry will be permanently removed from your playlist.</p>
+      <div class="confirm-song" id="confirm-song"></div>
+      <div id="confirm-error" class="form-message" role="alert" hidden></div>
+      <div class="modal-actions confirm-actions">
+        <button class="secondary-button" type="button" data-close-confirm>Keep song</button>
+        <button id="confirm-delete" class="danger-button" type="button">
+          <span>Delete</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
