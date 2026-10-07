@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  accountNameToEmail,
   cleanEntry,
   filterEntries,
   normalizeAccountName,
   validateEntry,
+  validatePassword,
 } from "../src/utils.js";
 
 const entries = [
@@ -19,13 +19,11 @@ test("account names are case-insensitive and whitespace-normalized", () => {
   assert.equal(normalizeAccountName("MARIA SANTOS"), "maria santos");
 });
 
-test("equivalent account names produce the same private auth identifier", async () => {
-  const first = await accountNameToEmail("Maria Santos");
-  const second = await accountNameToEmail("  maria   santos  ");
-
-  assert.equal(first, second);
-  assert.match(first, /^u-[a-f0-9]{64}@users\.karaokehub\.invalid$/);
-  assert.equal(first.includes("maria"), false);
+test("password validation uses bcrypt's byte limit", () => {
+  assert.equal(validatePassword("short"), "Use a password with at least 6 characters.");
+  assert.equal(validatePassword("secure password"), "");
+  assert.equal(validatePassword("a".repeat(73)), "Use a password shorter than 72 bytes.");
+  assert.equal(validatePassword("\u00e9".repeat(37)), "Use a password shorter than 72 bytes.");
 });
 
 test("song search only checks song titles", () => {

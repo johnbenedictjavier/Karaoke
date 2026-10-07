@@ -1,5 +1,7 @@
 node_modules/
 dist/
 .vite/
+supabase/.temp/
+supabase/functions/.env
 *.log
 .DS_Store

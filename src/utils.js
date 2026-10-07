@@ -6,12 +6,10 @@ export function normalizeAccountName(value) {
   return cleanAccountName(value).toLocaleLowerCase("en-US");
 }
 
-export async function accountNameToEmail(value) {
-  const normalized = normalizeAccountName(value);
-  const bytes = new TextEncoder().encode(normalized);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `u-${hex}@users.karaokehub.invalid`;
+export function validatePassword(password) {
+  if (password.length < 6) return "Use a password with at least 6 characters.";
+  if (new TextEncoder().encode(password).length > 72) return "Use a password shorter than 72 bytes.";
+  return "";
 }
 
 export function filterEntries(entries, field, query) {
@@ -28,7 +26,7 @@ export function filterEntries(entries, field, query) {
 
 export function cleanEntry(input) {
   return {
-    karaoke_number: input.karaokeNumber.trim(),
+    karaoke_number: input.karaokeNumber.trim().replace(/\s+/g, " "),
     song_title: input.song.trim().replace(/\s+/g, " "),
     singer: input.singer.trim().replace(/\s+/g, " "),
   };

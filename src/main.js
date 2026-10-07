@@ -1,27 +1,30 @@
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./config.js";
 import {
-  accountNameToEmail,
   cleanAccountName,
   cleanEntry,
   filterEntries,
-  normalizeAccountName,
   validateEntry,
+  validatePassword,
 } from "./utils.js";
 import "./styles.css";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: false,
+    autoRefreshToken: false,
     detectSessionInUrl: false,
   },
 });
+
+const SESSION_STORAGE_KEY = "karaokehub-account-session";
+const LEGACY_AUTH_STORAGE_KEY = "sb-nirtjqjcqaxlrskuvpjy-auth-token";
 
 const icons = {
   more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>',
   edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"></path><path d="m13.5 6.5 4 4"></path></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg>',
+  mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0V5Z"></path><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v3M8 21h8"></path></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>',
 };
@@ -47,9 +50,17 @@ const elements = {
   userName: document.querySelector("#user-name"),
   userInitial: document.querySelector("#user-initial"),
   logoutButton: document.querySelector("#logout-button"),
+  welcomeName: document.querySelector("#welcome-name"),
   playlistSummary: document.querySelector("#playlist-summary"),
   addEntryButton: document.querySelector("#add-entry-button"),
   emptyAddButton: document.querySelector("#empty-add-button"),
+  statSongCount: document.querySelector("#stat-song-count"),
+  statSingCount: document.querySelector("#stat-sing-count"),
+  statFavoriteSong: document.querySelector("#stat-favorite-song"),
+  statFavoriteCount: document.querySelector("#stat-favorite-count"),
+  navSongCount: document.querySelector("#nav-song-count"),
+  libraryTitle: document.querySelector("#library-title"),
+  libraryNavButtons: document.querySelectorAll("[data-library-filter]"),
   searchInput: document.querySelector("#search-input"),
   searchFieldSelect: document.querySelector("#search-field-select"),
   clearSearch: document.querySelector("#clear-search"),
@@ -81,9 +92,11 @@ const state = {
   authMode: "login",
   user: null,
   authResolved: false,
+  sessionToken: null,
   entries: [],
   searchField: "song_title",
   searchQuery: "",
+  libraryFilter: "all",
   editingId: null,
   deletingId: null,
 };
@@ -132,6 +145,40 @@ function initializeTheme() {
   });
 }
 
+function getStoredSessionToken() {
+  try {
+    return localStorage.getItem(SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeSessionToken(token) {
+  state.sessionToken = token;
+  try {
+    localStorage.setItem(SESSION_STORAGE_KEY, token);
+  } catch {
+    // The active tab can still use the session when storage is blocked.
+  }
+}
+
+function clearSessionToken() {
+  state.sessionToken = null;
+  try {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // The in-memory session is still cleared.
+  }
+}
+
+function clearLegacyAuthSession() {
+  try {
+    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+  } catch {
+    // Legacy Auth storage is ignored when localStorage is unavailable.
+  }
+}
+
 function setMessage(element, message = "") {
   element.textContent = message;
   element.hidden = !message;
@@ -162,21 +209,115 @@ function showToast(message, type = "success") {
 
 function friendlyAuthError(error) {
   const message = error?.message?.toLowerCase() || "";
-  if (message.includes("invalid login credentials")) return "That name or password is not correct.";
-  if (message.includes("already registered") || message.includes("already been registered")) return "That account name is already in use. Try signing in instead.";
-  if (message.includes("password") && message.includes("6")) return "Use a password with at least 6 characters.";
-  if (message.includes("rate limit")) return "Too many attempts. Wait a moment and try again.";
+  if (message.includes("invalid_name_or_password")) return "That name or password is not correct.";
+  if (message.includes("account_name_taken")) return "That account name is already in use. Try signing in instead.";
+  if (message.includes("invalid_account_name")) return "Use an account name between 1 and 40 characters.";
+  if (message.includes("invalid_password_length")) return "Use a password between 6 and 72 bytes.";
+  if (["42501", "PGRST202", "PGRST204", "PGRST205"].includes(error?.code)) {
+    return "Custom account setup is not complete. Run supabase/schema.sql in the Supabase SQL Editor.";
+  }
   if (message.includes("fetch") || message.includes("network")) return "Unable to connect. Check your internet connection and try again.";
   return "Something went wrong. Please try again.";
 }
 
 function friendlyDataError(error) {
-  if (["42P01", "PGRST204", "PGRST205"].includes(error?.code)) {
+  const message = error?.message?.toLowerCase() || "";
+  if (["42501", "42P01", "PGRST202", "PGRST204", "PGRST205"].includes(error?.code)) {
     return "Database setup is not complete. Run supabase/schema.sql in the Supabase SQL Editor.";
   }
+  if (message.includes("invalid_or_expired_session")) return "Your session has expired. Sign in again.";
   if (error?.code === "23514") return "One of the values is too long or invalid.";
-  if (error?.message?.toLowerCase().includes("fetch")) return "Unable to connect. Check your internet connection.";
+  if (message.includes("invalid_karaoke_entry")) return "Complete all karaoke fields and check their lengths.";
+  if (message.includes("fetch")) return "Unable to connect. Check your internet connection.";
   return "Could not save that change. Please try again.";
+}
+
+function isSessionError(error) {
+  return error?.message?.toLowerCase().includes("invalid_or_expired_session");
+}
+
+function normalizeEntryResponse(entry) {
+  if (!entry) return entry;
+  return {
+    ...entry,
+    sing_count: Number(entry.sing_count || 0),
+  };
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value || 0));
+}
+
+function formatLastSung(value) {
+  if (!value) return "Not sung yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not sung yet";
+
+  const today = new Date();
+  const dateKey = date.toLocaleDateString();
+  const todayKey = today.toLocaleDateString();
+  if (dateKey === todayKey) return "Sung today";
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (dateKey === yesterday.toLocaleDateString()) return "Sung yesterday";
+
+  return `Last sung ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date)}`;
+}
+
+function sortEntriesForLibrary(entries) {
+  if (state.libraryFilter === "most-sung") {
+    return [...entries].sort((a, b) => {
+      const countDifference = Number(b.sing_count || 0) - Number(a.sing_count || 0);
+      if (countDifference) return countDifference;
+      return new Date(b.last_sung_at || b.created_at) - new Date(a.last_sung_at || a.created_at);
+    });
+  }
+
+  if (state.libraryFilter === "recent") {
+    return [...entries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+
+  return entries;
+}
+
+function updatePlaylistStats() {
+  const totalSings = state.entries.reduce((total, entry) => total + Number(entry.sing_count || 0), 0);
+  const topEntry = [...state.entries]
+    .sort((a, b) => Number(b.sing_count || 0) - Number(a.sing_count || 0))[0];
+
+  elements.statSongCount.textContent = formatNumber(state.entries.length);
+  elements.statSingCount.textContent = formatNumber(totalSings);
+  elements.navSongCount.textContent = formatNumber(state.entries.length);
+
+  if (topEntry && Number(topEntry.sing_count || 0) > 0) {
+    elements.statFavoriteSong.textContent = topEntry.song_title;
+    elements.statFavoriteCount.textContent = `${formatNumber(topEntry.sing_count)} ${Number(topEntry.sing_count) === 1 ? "sing" : "sings"}`;
+  } else {
+    elements.statFavoriteSong.textContent = "No repeats yet";
+    elements.statFavoriteCount.textContent = "Log your first sing";
+  }
+}
+
+function updateLibraryFilter(filter) {
+  state.libraryFilter = filter;
+  const labels = {
+    all: "All songs",
+    recent: "Recently added",
+    "most-sung": "Most sung",
+  };
+  elements.libraryTitle.textContent = labels[filter] || labels.all;
+  elements.libraryNavButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.libraryFilter === filter);
+  });
+  renderEntries();
+}
+
+async function expireSession() {
+  clearSessionToken();
+  state.authResolved = false;
+  await applyAccount(null);
+  showToast("Your session expired. Sign in again.", "error");
 }
 
 function setAuthMode(mode) {
@@ -193,7 +334,7 @@ function setAuthMode(mode) {
     : "Your setlist is waiting for you.";
   elements.authSubmitLabel.textContent = isSignup ? "Create account" : "Sign in";
   elements.authSwitch.textContent = isSignup ? "Sign in instead" : "Create an account";
-  elements.authFootnote.firstChild.textContent = isSignup ? "Already have an account? " : "New to karaokeHub? ";
+  elements.authFootnote.firstChild.textContent = isSignup ? "Already have an account? " : "New to HimiGora? ";
   elements.authPassword.autocomplete = isSignup ? "new-password" : "current-password";
   setMessage(elements.authError);
 }
@@ -210,8 +351,9 @@ async function handleAuthSubmit(event) {
     elements.authName.focus();
     return;
   }
-  if (password.length < 6) {
-    setMessage(elements.authError, "Use a password with at least 6 characters.");
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    setMessage(elements.authError, passwordError);
     elements.authPassword.focus();
     return;
   }
@@ -219,37 +361,20 @@ async function handleAuthSubmit(event) {
   setButtonLoading(elements.authSubmit, true);
 
   try {
-    const email = await accountNameToEmail(displayName);
-    let result;
+    const functionName = state.authMode === "signup" ? "register_account" : "login_account";
+    const { data, error } = await supabase.rpc(functionName, {
+      p_name: displayName,
+      p_password: password,
+    });
 
-    if (state.authMode === "signup") {
-      result = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-            account_name: normalizeAccountName(displayName),
-          },
-        },
-      });
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
-    }
-
-    if (result.error) throw result.error;
-
-    if (!result.data.session) {
-      setMessage(
-        elements.authError,
-        "Account created, but email confirmation is enabled. Turn off Confirm email in Supabase Authentication settings, then try again.",
-      );
-      return;
-    }
+    if (error) throw error;
+    if (!data?.session_token || !data?.account) throw new Error("Invalid account response");
 
     elements.authPassword.value = "";
-    if (state.authMode === "signup") showToast("Account created. Welcome to karaokeHub!");
-    await applySession(result.data.session);
+    storeSessionToken(data.session_token);
+    if (state.authMode === "signup") showToast("Account created. Welcome to HimiGora!");
+    state.authResolved = false;
+    await applyAccount(data.account);
   } catch (error) {
     console.error("Authentication failed", error);
     setMessage(elements.authError, friendlyAuthError(error));
@@ -266,8 +391,8 @@ function setPasswordVisibility() {
   elements.authPassword.focus();
 }
 
-async function applySession(session) {
-  const nextUser = session?.user || null;
+async function applyAccount(account) {
+  const nextUser = account || null;
   const currentUserId = state.user?.id || null;
 
   if (state.authResolved && nextUser?.id === currentUserId) return;
@@ -277,15 +402,17 @@ async function applySession(session) {
 
   if (!nextUser) {
     state.entries = [];
+    updatePlaylistStats();
     elements.appView.hidden = true;
     elements.authView.hidden = false;
     elements.authName.focus({ preventScroll: true });
     return;
   }
 
-  const displayName = nextUser.user_metadata?.display_name || nextUser.user_metadata?.account_name || "Singer";
+  const displayName = nextUser.name || "Singer";
   elements.userName.textContent = displayName;
   elements.userInitial.textContent = displayName.trim().charAt(0).toLocaleUpperCase() || "K";
+  elements.welcomeName.textContent = displayName;
   elements.authView.hidden = true;
   elements.appView.hidden = false;
   await loadEntries();
@@ -293,16 +420,18 @@ async function applySession(session) {
 
 async function handleLogout() {
   elements.logoutButton.disabled = true;
+  const token = state.sessionToken;
   try {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.rpc("logout_account", { p_session_token: token });
     if (error) throw error;
-    state.authResolved = false;
-    await applySession(null);
     showToast("You have been signed out.");
   } catch (error) {
     console.error("Sign out failed", error);
-    showToast("Could not sign out. Please try again.", "error");
+    showToast("Signed out on this device. The server session will expire automatically.", "error");
   } finally {
+    clearSessionToken();
+    state.authResolved = false;
+    await applyAccount(null);
     elements.logoutButton.disabled = false;
   }
 }
@@ -313,21 +442,24 @@ async function loadEntries() {
   elements.emptyState.hidden = true;
   elements.resultsLabel.textContent = "Loading your songs...";
 
-  const { data, error } = await supabase
-    .from("karaoke_entries")
-    .select("id, karaoke_number, song_title, singer, created_at, updated_at")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("list_karaoke_entries", {
+    p_session_token: state.sessionToken,
+  });
 
   elements.listLoading.hidden = true;
 
   if (error) {
     console.error("Could not load karaoke entries", error);
+    if (isSessionError(error)) {
+      await expireSession();
+      return;
+    }
     state.entries = [];
     renderLoadError(friendlyDataError(error));
     return;
   }
 
-  state.entries = data || [];
+  state.entries = (data || []).map(normalizeEntryResponse);
   renderEntries();
 }
 
@@ -338,30 +470,40 @@ function renderLoadError(message) {
   elements.emptyDescription.textContent = message;
   elements.emptyAddButton.hidden = true;
   elements.resultsLabel.textContent = "Could not load playlist";
+  updatePlaylistStats();
 }
 
 function renderEntries() {
-  const filteredEntries = filterEntries(state.entries, state.searchField, state.searchQuery);
+  const libraryEntries = sortEntriesForLibrary(state.entries);
+  const filteredEntries = filterEntries(libraryEntries, state.searchField, state.searchQuery);
   const hasQuery = Boolean(state.searchQuery.trim());
   const count = state.entries.length;
 
   elements.listLoading.hidden = true;
   elements.entryList.replaceChildren();
+  updatePlaylistStats();
   elements.playlistSummary.textContent = count
-    ? `${count} saved ${count === 1 ? "song" : "songs"}, ready for your next session.`
+    ? `${formatNumber(count)} saved ${count === 1 ? "song" : "songs"}, ready for your next session.`
     : "Keep every go-to song close at hand.";
   elements.resultsLabel.textContent = hasQuery
-    ? `${filteredEntries.length} of ${count} ${count === 1 ? "song" : "songs"}`
-    : `${count} ${count === 1 ? "song" : "songs"}`;
+    ? `${formatNumber(filteredEntries.length)} of ${formatNumber(count)} ${count === 1 ? "song" : "songs"}`
+    : `${formatNumber(filteredEntries.length)} ${filteredEntries.length === 1 ? "song" : "songs"}`;
 
   if (!filteredEntries.length) {
     elements.entryList.hidden = true;
     elements.emptyState.hidden = false;
-    elements.emptyAddButton.hidden = hasQuery;
-    elements.emptyTitle.textContent = hasQuery ? "No matches found" : "No Karaoke Numbers Yet";
+    const hasLibraryContent = state.entries.length > 0;
+    elements.emptyAddButton.hidden = hasQuery || hasLibraryContent;
+    elements.emptyTitle.textContent = hasQuery
+      ? "No matches found"
+      : hasLibraryContent
+        ? "Nothing in this view yet"
+        : "No Karaoke Numbers Yet";
     elements.emptyDescription.textContent = hasQuery
       ? `No ${state.searchField === "song_title" ? "song" : "singer"} matches "${state.searchQuery.trim()}". Try another search.`
-      : "Add your first song and start building a setlist that is always ready.";
+      : hasLibraryContent
+        ? "Log a sing to make this list your own, or switch to another library view."
+        : "Add your first song and start building a setlist that is always ready.";
     return;
   }
 
@@ -375,8 +517,13 @@ function createEntryRow(entry, index) {
   row.className = "entry-row";
   row.style.setProperty("--row-index", Math.min(index, 8));
   row.innerHTML = `
-    <div class="entry-number"><span></span></div>
+    <div class="entry-index"><span></span></div>
     <div class="entry-copy"><strong></strong><span></span></div>
+    <div class="entry-number"><small>PLATINUM</small><span></span></div>
+    <div class="entry-sings">
+      <button class="sing-button" type="button" data-action="sing"><span class="sing-icon">${icons.mic}</span><span class="sing-count"></span></button>
+      <small></small>
+    </div>
     <div class="entry-actions">
       <button class="row-menu-button" type="button" aria-haspopup="menu" aria-expanded="false">${icons.more}</button>
       <div class="row-menu" role="menu" aria-hidden="true">
@@ -385,13 +532,23 @@ function createEntryRow(entry, index) {
       </div>
     </div>`;
 
-  row.querySelector(".entry-number span").textContent = entry.karaoke_number;
+  row.querySelector(".entry-index span").textContent = String(index + 1).padStart(2, "0");
   row.querySelector(".entry-copy strong").textContent = entry.song_title;
   row.querySelector(".entry-copy span").textContent = entry.singer;
+  row.querySelector(".entry-number span").textContent = entry.karaoke_number;
+  row.querySelector(".entry-sings .sing-count").textContent = formatNumber(entry.sing_count);
+  row.querySelector(".entry-sings > small").textContent = formatLastSung(entry.last_sung_at);
 
   const menuButton = row.querySelector(".row-menu-button");
   const menu = row.querySelector(".row-menu");
   menuButton.setAttribute("aria-label", `Actions for ${entry.song_title}`);
+
+  const singButton = row.querySelector(".sing-button");
+  singButton.setAttribute("aria-label", `Log a sing of ${entry.song_title}`);
+  singButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    recordSing(entry, singButton);
+  });
 
   menuButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -421,6 +578,36 @@ function createEntryRow(entry, index) {
   });
 
   return row;
+}
+
+async function recordSing(entry, button) {
+  if (button.disabled) return;
+  button.disabled = true;
+  button.classList.add("is-loading");
+  button.setAttribute("aria-busy", "true");
+
+  try {
+    const { data, error } = await supabase.rpc("record_karaoke_sing", {
+      p_session_token: state.sessionToken,
+      p_entry_id: entry.id,
+    });
+    if (error) throw error;
+
+    state.entries = state.entries.map((item) => (item.id === entry.id ? normalizeEntryResponse(data) : item));
+    renderEntries();
+    showToast(`${entry.song_title} logged. ${formatNumber(data?.sing_count)} ${Number(data?.sing_count) === 1 ? "sing" : "sings"} total.`);
+  } catch (error) {
+    console.error("Could not log karaoke sing", error);
+    if (isSessionError(error)) {
+      await expireSession();
+      return;
+    }
+    showToast(friendlyDataError(error), "error");
+  } finally {
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    button.removeAttribute("aria-busy");
+  }
 }
 
 function closeActionMenus() {
@@ -476,26 +663,28 @@ async function handleEntrySubmit(event) {
   try {
     let result;
     if (state.editingId) {
-      result = await supabase
-        .from("karaoke_entries")
-        .update(entry)
-        .eq("id", state.editingId)
-        .select("id, karaoke_number, song_title, singer, created_at, updated_at")
-        .single();
+      result = await supabase.rpc("update_karaoke_entry", {
+        p_session_token: state.sessionToken,
+        p_entry_id: state.editingId,
+        p_karaoke_number: entry.karaoke_number,
+        p_song_title: entry.song_title,
+        p_singer: entry.singer,
+      });
     } else {
-      result = await supabase
-        .from("karaoke_entries")
-        .insert(entry)
-        .select("id, karaoke_number, song_title, singer, created_at, updated_at")
-        .single();
+      result = await supabase.rpc("create_karaoke_entry", {
+        p_session_token: state.sessionToken,
+        p_karaoke_number: entry.karaoke_number,
+        p_song_title: entry.song_title,
+        p_singer: entry.singer,
+      });
     }
 
     if (result.error) throw result.error;
 
     if (state.editingId) {
-      state.entries = state.entries.map((item) => (item.id === state.editingId ? result.data : item));
+      state.entries = state.entries.map((item) => (item.id === state.editingId ? normalizeEntryResponse(result.data) : item));
     } else {
-      state.entries.unshift(result.data);
+      state.entries.unshift(normalizeEntryResponse(result.data));
     }
 
     const wasEditing = Boolean(state.editingId);
@@ -505,6 +694,12 @@ async function handleEntrySubmit(event) {
     showToast(wasEditing ? "Karaoke entry updated." : "Song added to your playlist.");
   } catch (error) {
     console.error("Could not save karaoke entry", error);
+    if (isSessionError(error)) {
+      setButtonLoading(elements.entrySubmit, false);
+      closeEntryDialog();
+      await expireSession();
+      return;
+    }
     setMessage(elements.entryError, friendlyDataError(error));
   } finally {
     setButtonLoading(elements.entrySubmit, false);
@@ -533,7 +728,10 @@ async function deleteEntry() {
   setMessage(elements.confirmError);
 
   try {
-    const { error } = await supabase.from("karaoke_entries").delete().eq("id", deletingId);
+    const { error } = await supabase.rpc("delete_karaoke_entry", {
+      p_session_token: state.sessionToken,
+      p_entry_id: deletingId,
+    });
     if (error) throw error;
     state.entries = state.entries.filter((entry) => entry.id !== deletingId);
     setButtonLoading(elements.confirmDelete, false);
@@ -542,6 +740,12 @@ async function deleteEntry() {
     showToast("Song removed from your playlist.");
   } catch (error) {
     console.error("Could not delete karaoke entry", error);
+    if (isSessionError(error)) {
+      setButtonLoading(elements.confirmDelete, false);
+      closeConfirmDialog();
+      await expireSession();
+      return;
+    }
     setMessage(elements.confirmError, friendlyDataError(error));
   } finally {
     setButtonLoading(elements.confirmDelete, false);
@@ -573,6 +777,9 @@ function initializeEvents() {
   elements.emptyAddButton.addEventListener("click", () => openEntryDialog());
   elements.entryForm.addEventListener("submit", handleEntrySubmit);
   elements.confirmDelete.addEventListener("click", deleteEntry);
+  elements.libraryNavButtons.forEach((button) => {
+    button.addEventListener("click", () => updateLibraryFilter(button.dataset.libraryFilter));
+  });
 
   elements.searchInput.addEventListener("input", (event) => {
     state.searchQuery = event.target.value;
@@ -620,24 +827,35 @@ async function boot() {
   initializeTheme();
   initializeEvents();
   setAuthMode("login");
+  clearLegacyAuthSession();
 
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    await applySession(data.session);
+    const storedToken = getStoredSessionToken();
+    if (!storedToken) {
+      await applyAccount(null);
+    } else {
+      const { data, error } = await supabase.rpc("get_current_account", {
+        p_session_token: storedToken,
+      });
+      if (error) throw error;
+      if (!data) {
+        clearSessionToken();
+        await applyAccount(null);
+      } else {
+        state.sessionToken = storedToken;
+        await applyAccount(data);
+      }
+    }
   } catch (error) {
     console.error("Could not restore session", error);
+    clearSessionToken();
     state.authResolved = false;
-    await applySession(null);
-    setMessage(elements.authError, "Unable to connect to karaokeHub. Check your connection and try again.");
+    await applyAccount(null);
+    setMessage(elements.authError, friendlyAuthError(error));
   } finally {
     document.body.classList.remove("is-booting");
     elements.bootScreen.hidden = true;
   }
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    window.setTimeout(() => applySession(session), 0);
-  });
 }
 
 boot();

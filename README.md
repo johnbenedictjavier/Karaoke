@@ -1,18 +1,20 @@
-# karaokeHub
+# HimiGora
 
-A responsive personal karaoke songbook built with HTML, CSS, JavaScript, and Supabase. Each account has a private playlist protected by Supabase Row Level Security.
+A responsive personal karaoke songbook built with HTML, CSS, JavaScript, and Supabase. It uses a custom SQL account system with private, token-authorized playlists, per-song sing history, and manual song entry.
 
 ## Supabase setup
 
-The database must be configured before account creation and playlist features will work.
+The database must be configured before account creation and playlist features will work. The migration replaces the original Supabase Auth-backed schema and archives its old `karaoke_entries` table in the private schema because old Supabase Auth identities cannot be linked to the new name/password accounts.
 
 1. Open the [Supabase dashboard](https://supabase.com/dashboard/project/nirtjqjcqaxlrskuvpjy).
-2. Open **SQL Editor**, create a new query, paste `supabase/schema.sql`, and click **Run**.
-3. Open **Authentication** > **Sign In / Providers** > **Email**.
-4. Keep Email authentication enabled and turn **Confirm email** off.
-5. Optionally set the Site URL under **Authentication** > **URL Configuration** to `https://johnbenedictjavier.github.io/Karaoke/`.
+2. Open **SQL Editor** and run the contents of `supabase/schema.sql`.
+3. Open **Table Editor** > **accounts** to view registered account names and password hashes.
+
+The app uses name/password accounts backed by the database. It does not require email addresses, email confirmation, or Supabase Auth. Rerun the migration if the app reports that custom account setup is incomplete. Each "Log sing" action creates a private sing-history event and updates the songbook totals.
 
 Only the publishable Supabase key is included in the browser app. Never add a service-role key to this repository.
+
+Songs are added from the HimiGora songbook form. Enter the karaoke number, song title, and singer or artist, then use the library search and sing log to keep the setlist ready.
 
 ## Local development
 
@@ -33,13 +35,15 @@ npm run preview
 
 ## Authentication design
 
-The interface only asks for a name and password. Supabase Auth requires an email for password authentication, so karaokeHub normalizes the account name, hashes it with SHA-256, and derives an internal non-deliverable email address. The original name is saved as user metadata for display.
+HimiGora does not use Supabase Auth or create `auth.users` records. Account names and bcrypt password hashes are stored in `public.accounts`. Original passwords are never stored and cannot be recovered from those hashes.
 
-Account names are unique and case-insensitive. Passwords are sent directly to Supabase Auth and are never stored in the playlist table or browser storage. Because accounts do not collect a real email address, password recovery is not available.
+Account names are unique and case-insensitive. Successful registration or login returns a random 30-day session token; only its SHA-256 digest is stored in `private.account_sessions`. Direct browser access to all tables is revoked. Every account and playlist operation goes through a narrowly granted SQL function that validates the session before reading or changing data.
+
+The session token is stored in browser local storage so login survives a refresh. Password recovery is not available because the application does not collect an email address.
 
 ## Deployment
 
-Pushes to `main` run tests, build the Vite site, and deploy it through GitHub Actions. Before the first deployment, open **Repository Settings** > **Pages** and set **Source** to **GitHub Actions**. The expected site URL is:
+Pull requests run the JavaScript and PostgreSQL integration tests. Pushes to `main` repeat those checks, build the Vite site, and deploy it through GitHub Actions. Before the first deployment, open **Repository Settings** > **Pages** and set **Source** to **GitHub Actions**. The expected site URL is:
 
 `https://johnbenedictjavier.github.io/Karaoke/`
 
