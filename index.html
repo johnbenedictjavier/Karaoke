@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="HimiGora keeps your personal karaoke numbers organized and ready to sing."
@@ -32,7 +32,6 @@
         <svg viewBox="0 0 48 48" role="img">
           <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
           <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-          <path d="M24 34c-4.2-2.5-8.5-3.7-13-3.7V19.5c4.5 0 8.8 1.2 13 3.7m0 10.8c4.2-2.5 8.5-3.7 13-3.7V19.5c-4.5 0 8.8 1.2 13 3.7M24 23.2v10.8" />
         </svg>
       </div>
       <span class="boot-pulse"></span>
@@ -50,48 +49,19 @@
       </button>
 
       <section class="auth-shell" aria-labelledby="auth-title">
-        <div class="auth-showcase">
-          <div class="showcase-brand">
-            <span class="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 48 48">
-                <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
-                <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-                <path d="M24 34c-4.2-2.5-8.5-3.7-13-3.7V19.5c4.5 0 8.8 1.2 13 3.7m0 10.8c4.2-2.5 8.5-3.7 13-3.7V19.5c-4.5 0 8.8 1.2 13 3.7M24 23.2v10.8" />
-              </svg>
-            </span>
-            <span class="brand-name brand-name-inverse">Himi<span>Gora</span></span>
-          </div>
-
-          <div class="showcase-copy">
-            <span class="eyebrow eyebrow-inverse">Your songs. Your stage.</span>
-            <h1>Every karaoke number, ready when you are.</h1>
-            <p>Build your personal songbook and find the next crowd favorite in seconds.</p>
-          </div>
-
-          <div class="showcase-visual" aria-hidden="true">
-            <div class="vinyl vinyl-back"><span></span></div>
-            <div class="sample-card">
-              <span class="sample-number">1847</span>
-              <span class="sample-copy"><strong>Dancing Queen</strong><small>ABBA</small></span>
-              <span class="sample-bars"><i></i><i></i><i></i><i></i></span>
-            </div>
-            <div class="vinyl vinyl-front"><span></span></div>
-          </div>
-        </div>
-
         <div class="auth-card-wrap">
           <div class="mobile-brand">
             <span class="brand-mark" aria-hidden="true">
               <svg viewBox="0 0 48 48">
                 <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
                 <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-                <path d="M24 34c-4.2-2.5-8.5-3.7-13-3.7V19.5c4.5 0 8.8 1.2 13 3.7m0 10.8c4.2-2.5 8.5-3.7 13-3.7V19.5c-4.5 0 8.8 1.2 13 3.7M24 23.2v10.8" />
               </svg>
             </span>
             <span class="brand-name">Himi<span>Gora</span></span>
           </div>
 
-          <div class="auth-card">
+          <!-- Sign in / Create account -->
+          <div id="auth-card" class="auth-card">
             <div class="auth-heading">
               <span class="eyebrow" id="auth-eyebrow">Welcome back</span>
               <h2 id="auth-title">Sign in to your songbook</h2>
@@ -150,6 +120,28 @@
                 </button>
               </div>
 
+              <!-- Shown only when creating an account -->
+              <div id="signup-answer-group" hidden>
+                <label class="field-label" for="auth-answer">
+                  Security answer <span class="field-optional">optional</span>
+                </label>
+                <p class="field-help" id="signup-question-text">Security question</p>
+                <div class="input-wrap">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3M12 17h.01"></path>
+                  </svg>
+                  <input
+                    id="auth-answer"
+                    name="securityAnswer"
+                    type="text"
+                    maxlength="72"
+                    autocomplete="off"
+                    placeholder="Used to recover your password"
+                  />
+                </div>
+              </div>
+
               <div id="auth-error" class="form-message" role="alert" hidden></div>
 
               <button id="auth-submit" class="primary-button auth-submit" type="submit">
@@ -159,9 +151,62 @@
               </button>
             </form>
 
+            <button id="forgot-link" class="link-button forgot-link" type="button">Forgot password?</button>
+
             <p class="auth-footnote" id="auth-footnote">
               New to HimiGora?
               <button id="auth-switch" type="button">Create an account</button>
+            </p>
+          </div>
+
+          <!-- Forgot password -->
+          <div id="reset-card" class="auth-card" hidden>
+            <div class="auth-heading">
+              <span class="eyebrow">Password recovery</span>
+              <h2>Reset your password</h2>
+              <p>Answer your security question to set a new password.</p>
+            </div>
+
+            <form id="reset-form" novalidate>
+              <label class="field-label" for="reset-name">Name</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path>
+                </svg>
+                <input id="reset-name" name="name" type="text" maxlength="40" autocomplete="username" placeholder="Your account name" required />
+              </div>
+
+              <label class="field-label" for="reset-answer">Security question</label>
+              <p class="field-help" id="reset-question-text">Security question</p>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3M12 17h.01"></path>
+                </svg>
+                <input id="reset-answer" name="securityAnswer" type="text" maxlength="72" autocomplete="off" placeholder="Your answer" required />
+              </div>
+
+              <label class="field-label" for="reset-password">New password</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="10" width="16" height="11" rx="3"></rect>
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14.5v2"></path>
+                </svg>
+                <input id="reset-password" name="password" type="password" minlength="6" maxlength="72" autocomplete="new-password" placeholder="At least 6 characters" required />
+              </div>
+
+              <div id="reset-error" class="form-message" role="alert" hidden></div>
+
+              <button id="reset-submit" class="primary-button auth-submit" type="submit">
+                <span>Set new password</span>
+                <span class="button-spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+
+            <p class="auth-footnote">
+              Remembered it?
+              <button id="reset-back" type="button">Back to sign in</button>
             </p>
           </div>
         </div>
@@ -171,158 +216,248 @@
     <div id="app-view" class="app-view" hidden>
       <header class="app-header">
         <div class="app-header-inner">
-          <a class="app-brand" href="#" aria-label="HimiGora home">
+          <span class="app-brand">
             <span class="brand-mark brand-mark-small" aria-hidden="true">
               <svg viewBox="0 0 48 48">
                 <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
                 <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-                <path d="M24 34c-4.2-2.5-8.5-3.7-13-3.7V19.5c4.5 0 8.8 1.2 13 3.7m0 10.8c4.2-2.5 8.5-3.7 13-3.7V19.5c-4.5 0 8.8 1.2 13 3.7M24 23.2v10.8" />
               </svg>
             </span>
             <span class="brand-name">Himi<span>Gora</span></span>
-          </a>
+          </span>
+          <h1 id="tab-title" class="tab-title">Songs</h1>
+        </div>
+      </header>
 
-          <div class="header-actions">
-            <button class="icon-button" type="button" data-theme-toggle aria-label="Switch theme">
-              <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="4"></circle>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
-              </svg>
-              <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
-              </svg>
-            </button>
-            <div class="user-chip" aria-label="Current account">
-              <span id="user-initial" class="user-initial">K</span>
-              <span id="user-name" class="user-name">Singer</span>
+      <!-- Dismissible prompt for accounts with no recovery answer -->
+      <div id="answer-banner" class="answer-banner" hidden>
+        <span class="answer-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3M12 17h.01"></path></svg>
+        </span>
+        <div class="answer-banner-copy">
+          <strong>Set up password recovery</strong>
+          <span>Add a security answer so you can reset a forgotten password.</span>
+        </div>
+        <button id="answer-banner-go" class="banner-link" type="button">Set it up</button>
+        <button id="answer-banner-dismiss" class="banner-dismiss" type="button" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+
+      <main class="app-main">
+        <!-- SONGS TAB -->
+        <section id="tab-songs" class="tab-panel" aria-label="Your songs">
+          <section class="stats-grid" aria-label="Playlist statistics">
+            <article class="stat-card stat-card-accent">
+              <span class="stat-copy"><small>In your book</small><strong id="stat-song-count">0</strong><span>saved songs</span></span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-copy"><small>Stage time</small><strong id="stat-sing-count">0</strong><span>times sung</span></span>
+            </article>
+            <article class="stat-card stat-card-wide">
+              <span class="stat-copy"><small>Top repeat</small><strong id="stat-favorite-song">No songs yet</strong><span id="stat-favorite-count">Log your first sing</span></span>
+            </article>
+          </section>
+
+          <nav class="chip-nav" aria-label="Library views">
+            <button class="chip-filter is-active" type="button" data-library-filter="all">All <b id="nav-song-count">0</b></button>
+            <button class="chip-filter" type="button" data-library-filter="recent">Recent</button>
+            <button class="chip-filter" type="button" data-library-filter="most-sung">Most sung</button>
+          </nav>
+
+          <div class="search-toolbar">
+            <div class="search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+              <input id="search-input" type="search" autocomplete="off" placeholder="Search your songs..." aria-label="Search playlist" />
+              <button id="clear-search" class="clear-search" type="button" aria-label="Clear search" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+              </button>
             </div>
-            <button id="logout-button" class="secondary-button logout-button" type="button">
+            <label class="filter-select-wrap" for="search-field-select">
+              <select id="search-field-select" aria-label="Search by field">
+                <option value="song_title">Song</option>
+                <option value="singer">Singer</option>
+              </select>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"></path></svg>
+            </label>
+          </div>
+
+          <div class="list-meta">
+            <p id="results-label" aria-live="polite">Loading your songs...</p>
+          </div>
+
+          <div id="list-loading" class="list-loading" aria-label="Loading karaoke entries">
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+            <div class="skeleton-row"><span></span><span></span><span></span></div>
+          </div>
+
+          <ul id="entry-list" class="entry-list" aria-label="Saved karaoke songs" hidden></ul>
+
+          <div id="empty-state" class="empty-state" hidden>
+            <div class="empty-art" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M17 10a7 7 0 0 1 14 0v11a7 7 0 0 1-14 0V10Z"></path><path d="M12 20v1a12 12 0 0 0 24 0v-1M24 33v8M18 41h12"></path></svg>
+            </div>
+            <h2 id="empty-title">No Karaoke Numbers Yet</h2>
+            <p id="empty-description">Add your first song and start building a setlist that is always ready.</p>
+            <button id="empty-add-button" class="secondary-button empty-add" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+              Add your first song
+            </button>
+          </div>
+        </section>
+
+        <!-- DISCOVER TAB -->
+        <section id="tab-discover" class="tab-panel" aria-label="Discover songs with AI" hidden>
+          <div class="discover-intro">
+            <h2>Find songs by vibe</h2>
+            <p>Describe a mood, theme, or era and let AI suggest karaoke songs. Tap one to add it, then set the number from your machine.</p>
+          </div>
+
+          <form id="discover-form" class="discover-form" novalidate>
+            <div class="discover-input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2 5 5 .5-3.8 3.4 1.1 5.1L12 20l-4.3 2.5 1.1-5.1L5 14l5-.5L12 3Z"></path></svg>
+              <input id="discover-input" type="text" maxlength="300" autocomplete="off" placeholder="e.g. 90s Filipino love songs" aria-label="Describe the songs you want" />
+              <button id="discover-submit" class="discover-go" type="submit" aria-label="Get suggestions">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"></path></svg>
+                <span class="button-spinner" aria-hidden="true"></span>
+              </button>
+            </div>
+            <div class="discover-chips" id="discover-chips" aria-label="Example prompts">
+              <button type="button" class="example-chip" data-prompt="romcom movie songs">romcom</button>
+              <button type="button" class="example-chip" data-prompt="90s Filipino love songs">90s OPM love</button>
+              <button type="button" class="example-chip" data-prompt="upbeat party songs for a group">group party</button>
+              <button type="button" class="example-chip" data-prompt="power ballads to belt out">power ballads</button>
+              <button type="button" class="example-chip" data-prompt="sad breakup songs">breakup</button>
+              <button type="button" class="example-chip" data-prompt="feel-good road trip songs">road trip</button>
+            </div>
+          </form>
+
+          <div id="discover-loading" class="discover-loading" hidden aria-label="Finding songs">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+
+          <div id="discover-empty" class="discover-empty">
+            <div class="discover-empty-art" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="m24 6 3.4 8.6L36 18l-6.5 5.8 1.9 8.7L24 28l-7.4 4.5 1.9-8.7L12 18l8.6-3.4L24 6Z"></path></svg>
+            </div>
+            <p id="discover-empty-text">Pick an example above or type your own idea to get started.</p>
+          </div>
+
+          <ul id="discover-results" class="discover-results" aria-label="Suggested songs" hidden></ul>
+        </section>
+
+        <!-- ADD TAB -->
+        <section id="tab-add" class="tab-panel" aria-label="Add a song manually" hidden>
+          <div class="add-intro">
+            <h2>Add a karaoke song</h2>
+            <p>Save a song to your personal songbook with its number from your machine.</p>
+          </div>
+          <form id="add-form" class="add-form" novalidate>
+            <label class="field-label" for="add-number">Karaoke number</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM9 8h6M9 12h6M9 16h3"></path></svg>
+              <input id="add-number" name="karaokeNumber" type="text" maxlength="24" autocomplete="off" placeholder="e.g. 1847" required />
+            </div>
+
+            <label class="field-label" for="add-song">Song name</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13M9 9l10-2"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>
+              <input id="add-song" name="song" type="text" maxlength="120" autocomplete="off" placeholder="Enter song title" required />
+            </div>
+
+            <label class="field-label" for="add-singer">Singer</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg>
+              <input id="add-singer" name="singer" type="text" maxlength="100" autocomplete="off" placeholder="Enter singer or artist" required />
+            </div>
+
+            <div id="add-error" class="form-message" role="alert" hidden></div>
+
+            <button id="add-submit" class="primary-button" type="submit">
+              <span>Add to songbook</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+        </section>
+
+        <!-- PROFILE TAB -->
+        <section id="tab-profile" class="tab-panel" aria-label="Profile and settings" hidden>
+          <div class="profile-head">
+            <span id="profile-initial" class="profile-avatar">K</span>
+            <div>
+              <strong id="profile-name">Singer</strong>
+              <span id="profile-recovery" class="profile-recovery">Recovery not set up</span>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h2>Password recovery</h2>
+            <p class="field-help" id="profile-question-text">Security question</p>
+            <form id="answer-form" class="answer-form" novalidate>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3M12 17h.01"></path></svg>
+                <input id="answer-input" name="securityAnswer" type="text" maxlength="72" autocomplete="off" placeholder="Your answer" />
+              </div>
+              <div id="answer-error" class="form-message" role="alert" hidden></div>
+              <button id="answer-submit" class="primary-button" type="submit">
+                <span id="answer-submit-label">Save answer</span>
+                <span class="button-spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+          </div>
+
+          <div class="profile-section">
+            <h2>Appearance</h2>
+            <button class="profile-row" type="button" data-theme-toggle>
+              <span class="profile-row-icon" aria-hidden="true">
+                <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path></svg>
+                <svg class="moon-icon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>
+              </span>
+              <span>Toggle light / dark</span>
+            </button>
+          </div>
+
+          <div class="profile-section">
+            <button id="logout-button" class="danger-row" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10"></path></svg>
               <span>Log out</span>
             </button>
           </div>
-        </div>
-      </header>
 
-      <main class="dashboard">
-        <section class="dashboard-heading" aria-labelledby="playlist-title">
-          <div>
-            <span class="eyebrow">Your personal stage</span>
-            <h1 id="playlist-title">Welcome back, <span id="welcome-name">Singer</span>.</h1>
-            <p id="playlist-summary">Keep every go-to song close at hand.</p>
-          </div>
-          <button id="add-entry-button" class="primary-button add-button" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-            <span>Add manually</span>
-          </button>
-        </section>
-
-        <section class="stats-grid" aria-label="Playlist statistics">
-          <article class="stat-card stat-card-accent">
-            <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"></path></svg></span>
-            <span class="stat-copy"><small>In your book</small><strong id="stat-song-count">0</strong><span>saved songs</span></span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 19V5l10-2v13M8 10l10-2"></path><circle cx="5" cy="19" r="3"></circle><circle cx="15" cy="16" r="3"></circle></svg></span>
-            <span class="stat-copy"><small>Stage time</small><strong id="stat-sing-count">0</strong><span>times sung</span></span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"></path></svg></span>
-            <span class="stat-copy"><small>Top repeat</small><strong id="stat-favorite-song">No songs yet</strong><span id="stat-favorite-count">Log your first sing</span></span>
-          </article>
-        </section>
-
-        <section class="library-layout" aria-label="Karaoke library">
-          <aside class="library-rail">
-            <span class="rail-label">Your library</span>
-            <nav class="library-nav" aria-label="Library views">
-              <button class="library-nav-button is-active" type="button" data-library-filter="all">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h5"></path></svg>
-                <span>All songs</span><b id="nav-song-count">0</b>
-              </button>
-              <button class="library-nav-button" type="button" data-library-filter="recent">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg>
-                <span>Recently added</span>
-              </button>
-              <button class="library-nav-button" type="button" data-library-filter="most-sung">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.2 5.1 5.5.5-4.2 3.6 1.3 5.4-4.8-2.9-4.8 2.9 1.3-5.4-4.2-3.6 5.5-.5L12 3Z"></path></svg>
-                <span>Most sung</span>
-              </button>
-            </nav>
-            <div class="rail-note">
-              <span class="rail-note-mark" aria-hidden="true">PL</span>
-              <strong>Platinum picks</strong>
-              <span>Every number, ready for your next set.</span>
-            </div>
-          </aside>
-
-          <section class="playlist-panel" aria-label="Karaoke playlist">
-            <div class="section-heading playlist-heading">
-              <div>
-                <span class="eyebrow">Songbook</span>
-                <h2 id="library-title">All songs</h2>
-              </div>
-              <span class="list-key"><i></i> Synced securely</span>
-            </div>
-
-            <div class="search-toolbar">
-              <div class="search-field">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
-                <input id="search-input" type="search" autocomplete="off" placeholder="Search your songs..." aria-label="Search playlist" />
-                <button id="clear-search" class="clear-search" type="button" aria-label="Clear search" hidden>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
-                </button>
-              </div>
-
-              <label class="filter-select-wrap" for="search-field-select">
-                <span>Search by</span>
-                <select id="search-field-select">
-                  <option value="song_title">Song</option>
-                  <option value="singer">Singer</option>
-                </select>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"></path></svg>
-              </label>
-            </div>
-
-            <div class="list-meta">
-              <p id="results-label" aria-live="polite">Loading your songs...</p>
-              <span class="list-hint">Tap the mic after you sing</span>
-            </div>
-
-            <div id="list-loading" class="list-loading" aria-label="Loading karaoke entries">
-              <div class="skeleton-row"><span></span><span></span><span></span></div>
-              <div class="skeleton-row"><span></span><span></span><span></span></div>
-              <div class="skeleton-row"><span></span><span></span><span></span></div>
-            </div>
-
-            <ul id="entry-list" class="entry-list" aria-label="Saved karaoke songs" hidden></ul>
-
-            <div id="empty-state" class="empty-state" hidden>
-              <div class="empty-art" aria-hidden="true">
-                <span class="empty-disc"></span>
-                <svg viewBox="0 0 48 48"><path d="M17 10a7 7 0 0 1 14 0v11a7 7 0 0 1-14 0V10Z"></path><path d="M12 20v1a12 12 0 0 0 24 0v-1M24 33v8M18 41h12"></path></svg>
-              </div>
-              <h2 id="empty-title">No Karaoke Numbers Yet</h2>
-              <p id="empty-description">Add your first song and start building a setlist that is always ready.</p>
-              <button id="empty-add-button" class="secondary-button empty-add" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-                Add your first song
-              </button>
-            </div>
-          </section>
+          <p class="profile-footer">Developed by John Benedict Javier</p>
         </section>
       </main>
 
-      <footer class="app-footer">Developed by John Benedict Javier</footer>
+      <nav class="bottom-nav" aria-label="Primary">
+        <button class="nav-item is-active" type="button" data-tab="songs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13M9 9l12-2"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+          <span>Songs</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="discover">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2 5 5 .5-3.8 3.4 1.1 5.1L12 20l-4.3 2.5 1.1-5.1L5 14l5-.5L12 3Z"></path></svg>
+          <span>Discover</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="add">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg>
+          <span>Add</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="profile">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
     </div>
 
     <dialog id="entry-dialog" class="modal entry-modal" aria-labelledby="entry-dialog-title">
       <form id="entry-form" novalidate>
         <div class="modal-header">
           <div>
-            <span id="entry-dialog-eyebrow" class="eyebrow">New entry</span>
-            <h2 id="entry-dialog-title">Add karaoke</h2>
-            <p id="entry-dialog-description">Save a song to your personal playlist.</p>
+            <span id="entry-dialog-eyebrow" class="eyebrow">Update entry</span>
+            <h2 id="entry-dialog-title">Edit karaoke</h2>
+            <p id="entry-dialog-description">Make changes to this songbook entry.</p>
           </div>
           <button class="modal-close" type="button" data-close-dialog aria-label="Close">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
@@ -354,7 +489,7 @@
         <div class="modal-actions">
           <button class="secondary-button" type="button" data-close-dialog>Cancel</button>
           <button id="entry-submit" class="primary-button" type="submit">
-            <span id="entry-submit-label">Add to playlist</span>
+            <span id="entry-submit-label">Save changes</span>
             <span class="button-spinner" aria-hidden="true"></span>
           </button>
         </div>
@@ -366,7 +501,7 @@
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg>
       </div>
       <h2 id="confirm-title">Delete this song?</h2>
-      <p id="confirm-description">This entry will be permanently removed from your playlist.</p>
+      <p id="confirm-description">This entry will be permanently removed from your songbook.</p>
       <div class="confirm-song" id="confirm-song"></div>
       <div id="confirm-error" class="form-message" role="alert" hidden></div>
       <div class="modal-actions confirm-actions">

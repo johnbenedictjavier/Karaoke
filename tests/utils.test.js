@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  PLACEHOLDER_KARAOKE_NUMBER,
   cleanEntry,
   filterEntries,
   normalizeAccountName,
+  normalizeSecurityAnswer,
+  suggestionToEntryInput,
   validateEntry,
   validatePassword,
+  validateSecurityAnswer,
 } from "../src/utils.js";
 
 const entries = [
@@ -41,4 +45,23 @@ test("entry values are cleaned and validated", () => {
   assert.deepEqual(entry, { karaoke_number: "0012", song_title: "Dancing Queen", singer: "ABBA" });
   assert.equal(validateEntry(entry), "");
   assert.equal(validateEntry({ ...entry, singer: "" }), "Enter the singer or artist.");
+});
+
+test("security answers normalize like the database", () => {
+  assert.equal(normalizeSecurityAnswer("  My  Favorite  Song "), "my favorite song");
+  assert.equal(normalizeSecurityAnswer("BLUE"), "blue");
+  assert.equal(normalizeSecurityAnswer(null), "");
+});
+
+test("security answer validation requires at least two characters", () => {
+  assert.equal(validateSecurityAnswer(" a "), "Enter an answer with at least 2 characters.");
+  assert.equal(validateSecurityAnswer("blue"), "");
+  assert.equal(validateSecurityAnswer("\u00e9".repeat(37)), "Use a shorter answer.");
+});
+
+test("AI suggestions map to a cleaned entry with a placeholder number", () => {
+  assert.deepEqual(
+    suggestionToEntryInput({ song_title: "  Hello ", artist: " Adele ", reason: "ballad" }),
+    { karaoke_number: PLACEHOLDER_KARAOKE_NUMBER, song_title: "Hello", singer: "Adele" },
+  );
 });

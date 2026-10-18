@@ -12,6 +12,41 @@ export function validatePassword(password) {
   return "";
 }
 
+// The single fixed security question shown everywhere (signup, profile, reset).
+export const SECURITY_QUESTION = "What is your favorite song?";
+
+// Mirrors private.normalize_security_answer in supabase/schema.sql so the client
+// validates against the same normalized form the database compares.
+export function normalizeSecurityAnswer(value) {
+  return (value ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("en-US");
+}
+
+export function validateSecurityAnswer(answer) {
+  const normalized = normalizeSecurityAnswer(answer);
+  if (normalized.length < 2) return "Enter an answer with at least 2 characters.";
+  if (new TextEncoder().encode(normalized).length > 72) return "Use a shorter answer.";
+  return "";
+}
+
+// Placeholder karaoke number for AI-added songs. The AI never returns a
+// reliable number, and the database requires a non-empty number, so we store a
+// visible placeholder the user replaces with the number from their own machine.
+export const PLACEHOLDER_KARAOKE_NUMBER = "—";
+
+// Map an AI suggestion to the cleaned fields create_karaoke_entry expects. The
+// karaoke number is a placeholder the user edits later.
+export function suggestionToEntryInput(suggestion) {
+  return cleanEntry({
+    karaokeNumber: PLACEHOLDER_KARAOKE_NUMBER,
+    song: suggestion?.song_title ?? "",
+    singer: suggestion?.artist ?? "",
+  });
+}
+
 export function filterEntries(entries, field, query) {
   const needle = query.normalize("NFKC").trim().toLocaleLowerCase();
   if (!needle) return entries;

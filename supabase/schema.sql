@@ -96,6 +96,7 @@ create table if not exists public.accounts (
   name text not null,
   normalized_name text not null unique,
   password_hash text not null,
+  security_answer_hash text,
   created_at timestamptz not null default pg_catalog.clock_timestamp(),
   updated_at timestamptz not null default pg_catalog.clock_timestamp(),
   constraint account_name_length check (
@@ -104,8 +105,31 @@ create table if not exists public.accounts (
     ) between 1 and 40
   ),
   constraint normalized_account_name_length check (pg_catalog.char_length(normalized_name) between 1 and 40),
-  constraint bcrypt_hash_format check (password_hash ~ '^\$2a\$12\$[./A-Za-z0-9]{53}$')
+  constraint bcrypt_hash_format check (password_hash ~ '^\$2a\$12\$[./A-Za-z0-9]{53}$'),
+  constraint security_answer_hash_format check (
+    security_answer_hash is null or security_answer_hash ~ '^\$2a\$12\$[./A-Za-z0-9]{53}$'
+  )
 );
+
+-- Add the security answer column to accounts created before recovery existed.
+alter table public.accounts
+  add column if not exists security_answer_hash text;
+
+do $security_answer_constraint$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.accounts'::regclass
+      and conname = 'security_answer_hash_format'
+  ) then
+    alter table public.accounts
+      add constraint security_answer_hash_format check (
+        security_answer_hash is null or security_answer_hash ~ '^\$2a\$12\$[./A-Za-z0-9]{53}$'
+      );
+  end if;
+end
+$security_answer_constraint$;
 
 create table if not exists private.auth_config (
   singleton boolean primary key default true check (singleton),
@@ -243,6 +267,25 @@ as $$
   );
 $$;
 
+create or replace function private.normalize_security_answer(p_answer text)
+returns text
+language sql
+immutable
+security invoker
+set search_path = ''
+as $$
+  select pg_catalog.lower(
+    pg_catalog.btrim(
+      pg_catalog.regexp_replace(
+        normalize(coalesce(p_answer, ''), NFKC),
+        '[[:space:]]+',
+        ' ',
+        'g'
+      )
+    )
+  );
+$$;
+
 create or replace function private.set_updated_at()
 returns trigger
 language plpgsql
@@ -314,7 +357,11 @@ begin
 end;
 $$;
 
-create or replace function public.register_account(p_name text, p_password text)
+create or replace function public.register_account(
+  p_name text,
+  p_password text,
+  p_security_answer text default null
+)
 returns jsonb
 language plpgsql
 security definer
@@ -323,6 +370,8 @@ as $$
 declare
   v_name text;
   v_normalized_name text;
+  v_answer text;
+  v_answer_hash text;
   v_account public.accounts%rowtype;
   v_session jsonb;
 begin
@@ -346,12 +395,24 @@ begin
     raise sqlstate 'PT400' using message = 'invalid_password_length';
   end if;
 
+  v_answer := private.normalize_security_answer(p_security_answer);
+  if p_security_answer is not null and pg_catalog.char_length(v_answer) > 0 then
+    if pg_catalog.char_length(v_answer) < 2
+      or pg_catalog.octet_length(v_answer) > 72 then
+      raise sqlstate 'PT400' using message = 'invalid_security_answer';
+    end if;
+    v_answer_hash := extensions.crypt(v_answer, extensions.gen_salt('bf', 12));
+  else
+    v_answer_hash := null;
+  end if;
+
   begin
-    insert into public.accounts (name, normalized_name, password_hash)
+    insert into public.accounts (name, normalized_name, password_hash, security_answer_hash)
     values (
       v_name,
       v_normalized_name,
-      extensions.crypt(p_password, extensions.gen_salt('bf', 12))
+      extensions.crypt(p_password, extensions.gen_salt('bf', 12)),
+      v_answer_hash
     )
     returning * into v_account;
   exception
@@ -365,7 +426,8 @@ begin
     'account', pg_catalog.jsonb_build_object(
       'id', v_account.id,
       'name', v_account.name,
-      'created_at', v_account.created_at
+      'created_at', v_account.created_at,
+      'has_security_answer', v_account.security_answer_hash is not null
     )
   );
 end;
@@ -419,7 +481,8 @@ begin
     'account', pg_catalog.jsonb_build_object(
       'id', v_account.id,
       'name', v_account.name,
-      'created_at', v_account.created_at
+      'created_at', v_account.created_at,
+      'has_security_answer', v_account.security_answer_hash is not null
     )
   );
 end;
@@ -458,13 +521,127 @@ begin
   select pg_catalog.jsonb_build_object(
     'id', accounts.id,
     'name', accounts.name,
-    'created_at', accounts.created_at
+    'created_at', accounts.created_at,
+    'has_security_answer', accounts.security_answer_hash is not null
   )
   into v_account
   from public.accounts as accounts
   where accounts.id = v_account_id;
 
   return v_account;
+end;
+$$;
+
+create or replace function public.set_security_answer(
+  p_session_token text,
+  p_security_answer text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_account_id uuid := private.account_id_for_session(p_session_token);
+  v_answer text := private.normalize_security_answer(p_security_answer);
+  v_answer_hash text;
+  v_account public.accounts%rowtype;
+begin
+  if v_account_id is null then
+    raise sqlstate 'PT401' using message = 'invalid_or_expired_session';
+  end if;
+
+  if pg_catalog.char_length(v_answer) < 2
+    or pg_catalog.octet_length(v_answer) > 72 then
+    raise sqlstate 'PT400' using message = 'invalid_security_answer';
+  end if;
+
+  v_answer_hash := extensions.crypt(v_answer, extensions.gen_salt('bf', 12));
+
+  update public.accounts as accounts
+  set security_answer_hash = v_answer_hash
+  where accounts.id = v_account_id
+  returning accounts.* into v_account;
+
+  if not found then
+    raise sqlstate 'PT401' using message = 'invalid_or_expired_session';
+  end if;
+
+  return pg_catalog.jsonb_build_object(
+    'id', v_account.id,
+    'name', v_account.name,
+    'created_at', v_account.created_at,
+    'has_security_answer', v_account.security_answer_hash is not null
+  );
+end;
+$$;
+
+create or replace function public.reset_password_with_answer(
+  p_name text,
+  p_security_answer text,
+  p_new_password text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_normalized_name text := private.normalize_account_name(p_name);
+  v_answer text := private.normalize_security_answer(p_security_answer);
+  v_account public.accounts%rowtype;
+  v_account_found boolean;
+  v_answer_hash text;
+  v_answer_matches boolean;
+  v_dummy_hash text;
+begin
+  -- Validate the new password before any account work so a weak password is
+  -- rejected the same way regardless of whether recovery would have succeeded.
+  if p_new_password is null
+    or pg_catalog.char_length(p_new_password) < 6
+    or pg_catalog.octet_length(p_new_password) > 72 then
+    raise sqlstate 'PT400' using message = 'invalid_password_length';
+  end if;
+
+  select accounts.*
+  into v_account
+  from public.accounts as accounts
+  where accounts.normalized_name = v_normalized_name;
+
+  v_account_found := found;
+
+  select config.dummy_password_hash
+  into v_dummy_hash
+  from private.auth_config as config
+  where config.singleton;
+
+  -- Use the stored answer hash when present, otherwise a dummy to keep the
+  -- comparison constant-time and avoid leaking whether the account exists or
+  -- has a recovery answer configured.
+  if v_account_found and v_account.security_answer_hash is not null then
+    v_answer_hash := v_account.security_answer_hash;
+  else
+    v_answer_hash := v_dummy_hash;
+  end if;
+
+  v_answer_matches := extensions.crypt(v_answer, v_answer_hash) = v_answer_hash;
+
+  if not v_account_found
+    or v_account.security_answer_hash is null
+    or pg_catalog.char_length(v_answer) = 0
+    or not coalesce(v_answer_matches, false) then
+    raise sqlstate 'PT401' using message = 'invalid_name_or_answer';
+  end if;
+
+  update public.accounts as accounts
+  set password_hash = extensions.crypt(p_new_password, extensions.gen_salt('bf', 12))
+  where accounts.id = v_account.id;
+
+  -- Invalidate every existing session so a leaked token cannot outlive a reset.
+  delete from private.account_sessions as sessions
+  where sessions.account_id = v_account.id;
+
+  return true;
 end;
 $$;
 
@@ -721,14 +898,21 @@ begin
 end;
 $$;
 
+-- Drop the pre-recovery 2-argument register_account so the new 3-argument
+-- version below is the only overload (avoids ambiguous RPC resolution).
+drop function if exists public.register_account(text, text);
+
 alter function private.normalize_account_name(text) owner to karaoke_api;
+alter function private.normalize_security_answer(text) owner to karaoke_api;
 alter function private.set_updated_at() owner to karaoke_api;
 alter function private.create_account_session(uuid) owner to karaoke_api;
 alter function private.account_id_for_session(text) owner to karaoke_api;
-alter function public.register_account(text, text) owner to karaoke_api;
+alter function public.register_account(text, text, text) owner to karaoke_api;
 alter function public.login_account(text, text) owner to karaoke_api;
 alter function public.logout_account(text) owner to karaoke_api;
 alter function public.get_current_account(text) owner to karaoke_api;
+alter function public.set_security_answer(text, text) owner to karaoke_api;
+alter function public.reset_password_with_answer(text, text, text) owner to karaoke_api;
 alter function public.list_karaoke_entries(text) owner to karaoke_api;
 alter function public.create_karaoke_entry(text, text, text, text) owner to karaoke_api;
 alter function public.update_karaoke_entry(text, uuid, text, text, text) owner to karaoke_api;
@@ -736,23 +920,28 @@ alter function public.delete_karaoke_entry(text, uuid) owner to karaoke_api;
 alter function public.record_karaoke_sing(text, uuid) owner to karaoke_api;
 
 revoke all on function private.normalize_account_name(text) from public, anon, authenticated, service_role;
+revoke all on function private.normalize_security_answer(text) from public, anon, authenticated, service_role;
 revoke all on function private.set_updated_at() from public, anon, authenticated, service_role;
 revoke all on function private.create_account_session(uuid) from public, anon, authenticated, service_role;
 revoke all on function private.account_id_for_session(text) from public, anon, authenticated, service_role;
-revoke all on function public.register_account(text, text) from public, anon, authenticated, service_role;
+revoke all on function public.register_account(text, text, text) from public, anon, authenticated, service_role;
 revoke all on function public.login_account(text, text) from public, anon, authenticated, service_role;
 revoke all on function public.logout_account(text) from public, anon, authenticated, service_role;
 revoke all on function public.get_current_account(text) from public, anon, authenticated, service_role;
+revoke all on function public.set_security_answer(text, text) from public, anon, authenticated, service_role;
+revoke all on function public.reset_password_with_answer(text, text, text) from public, anon, authenticated, service_role;
 revoke all on function public.list_karaoke_entries(text) from public, anon, authenticated, service_role;
 revoke all on function public.create_karaoke_entry(text, text, text, text) from public, anon, authenticated, service_role;
 revoke all on function public.update_karaoke_entry(text, uuid, text, text, text) from public, anon, authenticated, service_role;
 revoke all on function public.delete_karaoke_entry(text, uuid) from public, anon, authenticated, service_role;
 revoke all on function public.record_karaoke_sing(text, uuid) from public, anon, authenticated, service_role;
 
-grant execute on function public.register_account(text, text) to anon;
+grant execute on function public.register_account(text, text, text) to anon;
 grant execute on function public.login_account(text, text) to anon;
 grant execute on function public.logout_account(text) to anon;
 grant execute on function public.get_current_account(text) to anon;
+grant execute on function public.set_security_answer(text, text) to anon;
+grant execute on function public.reset_password_with_answer(text, text, text) to anon;
 grant execute on function public.list_karaoke_entries(text) to anon;
 grant execute on function public.create_karaoke_entry(text, text, text, text) to anon;
 grant execute on function public.update_karaoke_entry(text, uuid, text, text, text) to anon;

@@ -16,6 +16,12 @@ select 'bob_token', result ->> 'session_token'
 from (select public.register_account('Bob Singer', 'another secure password') as result) as registration;
 
 insert into auth_test_context (key, value)
+select 'carol_token', result ->> 'session_token'
+from (
+  select public.register_account('Carol Singer', 'carol first password', '  My  Favorite  Song ') as result
+) as registration;
+
+insert into auth_test_context (key, value)
 select 'alice_entry_id', result ->> 'id'
 from (
   select public.create_karaoke_entry(
@@ -130,6 +136,101 @@ begin
 end
 $integration_test$;
 
+-- Security-question password recovery.
+set role anon;
+
+do $recovery_test$
+declare
+  v_carol_token text := (select value from auth_test_context where key = 'carol_token');
+  v_bob_token text := (select value from auth_test_context where key = 'bob_token');
+  v_new_bob_token text;
+begin
+  -- Registration reports whether a recovery answer was configured.
+  if (public.get_current_account(v_carol_token) ->> 'has_security_answer') <> 'true' then
+    raise exception 'Account registered with an answer should report has_security_answer true';
+  end if;
+
+  if (public.get_current_account(v_bob_token) ->> 'has_security_answer') <> 'false' then
+    raise exception 'Account registered without an answer should report has_security_answer false';
+  end if;
+
+  -- An account without an answer cannot recover.
+  begin
+    perform public.reset_password_with_answer('Bob Singer', 'anything', 'brand new password');
+    raise exception 'Reset without a configured answer unexpectedly succeeded';
+  exception
+    when sqlstate 'PT401' then null;
+  end;
+
+  -- A wrong answer is rejected.
+  begin
+    perform public.reset_password_with_answer('Carol Singer', 'wrong answer', 'brand new password');
+    raise exception 'Reset with a wrong answer unexpectedly succeeded';
+  exception
+    when sqlstate 'PT401' then null;
+  end;
+
+  -- An unknown account name is rejected with the same generic error.
+  begin
+    perform public.reset_password_with_answer('Nobody Here', 'My Favorite Song', 'brand new password');
+    raise exception 'Reset for an unknown account unexpectedly succeeded';
+  exception
+    when sqlstate 'PT401' then null;
+  end;
+
+  -- A too-short new password is rejected.
+  begin
+    perform public.reset_password_with_answer('Carol Singer', 'My Favorite Song', 'short');
+    raise exception 'Reset with a weak password unexpectedly succeeded';
+  exception
+    when sqlstate 'PT400' then null;
+  end;
+
+  -- The correct answer (normalized: case and whitespace insensitive) resets the
+  -- password and invalidates the existing session.
+  if not public.reset_password_with_answer('Carol Singer', 'my favorite song', 'carol second password') then
+    raise exception 'Valid recovery failed';
+  end if;
+
+  if public.get_current_account(v_carol_token) is not null then
+    raise exception 'Existing session survived a password reset';
+  end if;
+
+  -- The old password no longer works.
+  begin
+    perform public.login_account('Carol Singer', 'carol first password');
+    raise exception 'Old password still works after reset';
+  exception
+    when sqlstate 'PT401' then null;
+  end;
+
+  -- The new password works.
+  v_new_bob_token := public.login_account('Carol Singer', 'carol second password') ->> 'session_token';
+  if v_new_bob_token is null then
+    raise exception 'New password login failed after reset';
+  end if;
+
+  -- set_security_answer requires a valid session.
+  begin
+    perform public.set_security_answer('0000000000000000000000000000000000000000000000000000000000000000', 'a new answer');
+    raise exception 'Setting an answer with an invalid session unexpectedly succeeded';
+  exception
+    when sqlstate 'PT401' then null;
+  end;
+
+  -- An account can add a recovery answer, then recover with it.
+  if (public.set_security_answer(v_bob_token, 'Blue') ->> 'has_security_answer') <> 'true' then
+    raise exception 'set_security_answer did not report has_security_answer true';
+  end if;
+
+  if not public.reset_password_with_answer('Bob Singer', 'blue', 'bob replacement password') then
+    raise exception 'Recovery after setting an answer failed';
+  end if;
+end
+$recovery_test$;
+
+reset role;
+
 reset role;
 
 do $legacy_archive_test$
@@ -223,6 +324,8 @@ begin
         'login_account',
         'logout_account',
         'get_current_account',
+        'set_security_answer',
+        'reset_password_with_answer',
         'list_karaoke_entries',
         'create_karaoke_entry',
         'update_karaoke_entry',
