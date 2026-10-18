@@ -59,9 +59,17 @@ test("security answer validation requires at least two characters", () => {
   assert.equal(validateSecurityAnswer("\u00e9".repeat(37)), "Use a shorter answer.");
 });
 
-test("AI suggestions map to a cleaned entry with a placeholder number", () => {
-  assert.deepEqual(
-    suggestionToEntryInput({ song_title: "  Hello ", artist: " Adele ", reason: "ballad" }),
-    { karaoke_number: PLACEHOLDER_KARAOKE_NUMBER, song_title: "Hello", singer: "Adele" },
-  );
+test("AI suggestions map to the raw entry-input shape with a placeholder number", () => {
+  const input = suggestionToEntryInput({ song_title: "  Hello ", artist: " Adele ", reason: "ballad" });
+  assert.deepEqual(input, {
+    karaokeNumber: PLACEHOLDER_KARAOKE_NUMBER,
+    song: "  Hello ",
+    singer: " Adele ",
+  });
+  // cleanEntry then normalizes it into what create_karaoke_entry receives.
+  assert.deepEqual(cleanEntry(input), {
+    karaoke_number: PLACEHOLDER_KARAOKE_NUMBER,
+    song_title: "Hello",
+    singer: "Adele",
+  });
 });

@@ -37,14 +37,15 @@ export function validateSecurityAnswer(answer) {
 // visible placeholder the user replaces with the number from their own machine.
 export const PLACEHOLDER_KARAOKE_NUMBER = "—";
 
-// Map an AI suggestion to the cleaned fields create_karaoke_entry expects. The
-// karaoke number is a placeholder the user edits later.
+// Map an AI suggestion to the raw entry-input shape ({ karaokeNumber, song,
+// singer }) that cleanEntry/createEntry expect. The karaoke number is a
+// placeholder the user edits later.
 export function suggestionToEntryInput(suggestion) {
-  return cleanEntry({
+  return {
     karaokeNumber: PLACEHOLDER_KARAOKE_NUMBER,
     song: suggestion?.song_title ?? "",
     singer: suggestion?.artist ?? "",
-  });
+  };
 }
 
 export function filterEntries(entries, field, query) {
