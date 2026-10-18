@@ -103,6 +103,27 @@ test("Gemini responses wrapped in a markdown fence are parsed", () => {
   ]);
 });
 
+test("a truncated JSON array still yields its complete objects", () => {
+  const response = {
+    candidates: [
+      {
+        content: {
+          parts: [
+            {
+              text:
+                '[\n  {"song_title":"Forevermore","artist":"Side A","reason":"90s OPM ballad"},\n' +
+                '  {"song_title":"Hanggang","artist":"Wency Cornejo","reason":"romantic class',
+            },
+          ],
+        },
+      },
+    ],
+  };
+  assert.deepEqual(parseGeminiSuggestions(response), [
+    { song_title: "Forevermore", artist: "Side A", reason: "90s OPM ballad" },
+  ]);
+});
+
 test("malformed or empty Gemini responses yield an empty list", () => {
   assert.deepEqual(parseGeminiSuggestions(null), []);
   assert.deepEqual(parseGeminiSuggestions({}), []);

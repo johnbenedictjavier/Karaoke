@@ -7,33 +7,37 @@
       name="description"
       content="HimiGora keeps your personal karaoke numbers organized and ready to sing."
     />
-    <meta name="theme-color" content="#f4f0e8" />
-    <meta name="color-scheme" content="light dark" />
-    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <title>HimiGora</title>
+    <meta name="theme-color" content="#0b0a12" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/himigora.png" type="image/png" />
+    <title>HimiGora — Your karaoke songbook</title>
     <script>
       (() => {
         try {
           const saved = localStorage.getItem("karaokehub-theme");
-          const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          const theme = saved || "dark";
           document.documentElement.dataset.theme = theme;
         } catch {
-          document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.theme = "dark";
         }
       })();
     </script>
   </head>
   <body class="is-booting">
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+      <defs>
+        <linearGradient id="himi-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#c084fc" />
+          <stop offset="50%" stop-color="#6366f1" />
+          <stop offset="100%" stop-color="#22d3ee" />
+        </linearGradient>
+      </defs>
+    </svg>
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
 
     <div id="boot-screen" class="boot-screen" aria-label="Loading HimiGora">
-      <div class="brand-mark brand-mark-large" aria-hidden="true">
-        <svg viewBox="0 0 48 48" role="img">
-          <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
-          <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-        </svg>
-      </div>
+      <img class="boot-logo" src="/himigora.png" alt="HimiGora" width="140" height="140" />
       <span class="boot-pulse"></span>
     </div>
 
@@ -50,14 +54,8 @@
 
       <section class="auth-shell" aria-labelledby="auth-title">
         <div class="auth-card-wrap">
-          <div class="mobile-brand">
-            <span class="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 48 48">
-                <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
-                <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-              </svg>
-            </span>
-            <span class="brand-name">Himi<span>Gora</span></span>
+          <div class="auth-logo">
+            <img src="/himigora.png" alt="HimiGora" width="96" height="96" />
           </div>
 
           <!-- Sign in / Create account -->
@@ -217,12 +215,7 @@
       <header class="app-header">
         <div class="app-header-inner">
           <span class="app-brand">
-            <span class="brand-mark brand-mark-small" aria-hidden="true">
-              <svg viewBox="0 0 48 48">
-                <path d="M19 5a5 5 0 0 1 10 0v13a5 5 0 0 1-10 0V5Z" />
-                <path d="M15 17v1a9 9 0 0 0 18 0v-1M24 27v5M18 32h12" />
-              </svg>
-            </span>
+            <img class="brand-logo" src="/himigora.png" alt="" width="34" height="34" aria-hidden="true" />
             <span class="brand-name">Himi<span>Gora</span></span>
           </span>
           <h1 id="tab-title" class="tab-title">Songs</h1>

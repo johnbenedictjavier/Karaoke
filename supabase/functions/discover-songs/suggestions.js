@@ -87,15 +87,60 @@ function extractJson(text) {
   try {
     return JSON.parse(candidate);
   } catch {
-    // Fall back to the first JSON array found anywhere in the text.
+    // Fall back to the first complete JSON array found anywhere in the text.
     const arrayMatch = candidate.match(/\[[\s\S]*\]/);
     if (arrayMatch) {
       try {
         return JSON.parse(arrayMatch[0]);
       } catch {
-        return null;
+        // Fall through to truncation recovery.
       }
     }
-    return null;
+    return salvageTruncatedArray(candidate);
   }
+}
+
+// Recover the complete objects from a JSON array that was cut off mid-stream
+// (for example when the model hits its output-token limit). Collects every
+// top-level `{ ... }` object and parses them individually, dropping any final
+// partial one.
+function salvageTruncatedArray(text) {
+  const start = text.indexOf("[");
+  if (start === -1) return null;
+
+  const objects = [];
+  let depth = 0;
+  let objectStart = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === "{") {
+      if (depth === 0) objectStart = i;
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0 && objectStart !== -1) {
+        try {
+          objects.push(JSON.parse(text.slice(objectStart, i + 1)));
+        } catch {
+          // Skip an object we cannot parse.
+        }
+        objectStart = -1;
+      }
+    }
+  }
+
+  return objects.length ? objects : null;
 }

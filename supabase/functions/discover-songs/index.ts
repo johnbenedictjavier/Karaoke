@@ -11,17 +11,67 @@
 // @ts-ignore - resolved by the Deno runtime at deploy time.
 import { parseGeminiSuggestions, MAX_SUGGESTIONS } from "./suggestions.js";
 
-// Tried in order; the first model the key can reach wins. Newer/better models
-// first, with widely-available fallbacks so a key with limited model access
-// still works.
-const GEMINI_MODELS = [
+// Preferred models, best first. The function also discovers models the key can
+// actually reach via ListModels, so it works regardless of key tier. An
+// optional GEMINI_MODEL secret is tried before everything else.
+const PREFERRED_MODELS = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
+  "gemini-flash-latest",
+  "gemini-2.5-flash-lite",
   "gemini-1.5-flash",
+  "gemini-1.5-flash-latest",
 ];
 
 const API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_PROMPT_LENGTH = 300;
+
+// Ask the API which models this key may call with generateContent, so we never
+// guess a name the key can't reach. Returns [] on any failure (we then fall
+// back to the preferred list).
+async function listUsableModels(apiKey: string): Promise<string[]> {
+  try {
+    const response = await fetch(`${API_ROOT}?key=${apiKey}&pageSize=100`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    const models = Array.isArray(data?.models) ? data.models : [];
+    return models
+      .filter((m: Record<string, unknown>) =>
+        Array.isArray(m?.supportedGenerationMethods) &&
+        (m.supportedGenerationMethods as string[]).includes("generateContent")
+      )
+      .map((m: Record<string, unknown>) => String(m?.name ?? "").replace(/^models\//, ""))
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+// Order the usable models by our preference, then append any extras. A static
+// fallback keeps behavior sane if ListModels is unavailable.
+function orderModels(usable: string[], preferredExtra?: string | null): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const push = (name: string) => {
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      ordered.push(name);
+    }
+  };
+
+  if (preferredExtra) push(preferredExtra);
+
+  if (usable.length) {
+    for (const name of PREFERRED_MODELS) if (usable.includes(name)) push(name);
+    // Prefer any remaining "flash" model before heavier "pro" models.
+    for (const name of usable) if (name.includes("flash")) push(name);
+    for (const name of usable) push(name);
+  } else {
+    for (const name of PREFERRED_MODELS) push(name);
+  }
+
+  return ordered;
+}
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -81,9 +131,14 @@ function buildGeminiRequest(prompt: string) {
     generationConfig: {
       temperature: 0.85,
       topP: 0.95,
-      maxOutputTokens: 1024,
+      // Generous budget: newer "thinking" models spend output tokens on hidden
+      // reasoning, so a small cap truncates the JSON answer mid-string.
+      maxOutputTokens: 8192,
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA,
+      // Keep thinking models from burning the whole budget on reasoning.
+      // Ignored by models that don't support it.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 }
@@ -150,8 +205,13 @@ Deno.serve(async (req: Request) => {
   }
   prompt = prompt.slice(0, MAX_PROMPT_LENGTH);
 
+  // @ts-ignore - Deno global is available in the edge runtime.
+  const preferredModel = Deno.env.get("GEMINI_MODEL");
+  const usable = await listUsableModels(apiKey);
+  const models = orderModels(usable, preferredModel);
+
   let lastHardFailure = false;
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     const result = await callModel(model, apiKey, prompt);
     if (result.ok) {
       return jsonResponse({ suggestions: result.suggestions, model });
