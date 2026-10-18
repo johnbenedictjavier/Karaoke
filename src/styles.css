@@ -4384,26 +4384,110 @@ svg {
   }
 }
 
-/* Comfortable desktop width: center the mobile-style column. */
-@media (min-width: 760px) {
+/* ------------------------------------------------------------------ *
+ * Responsive: tablet / laptop / desktop.
+ * Mobile is the base layout above. On wider screens the column grows,
+ * grids go multi-column, and the bottom nav becomes a floating pill.
+ * ------------------------------------------------------------------ */
+
+/* Tablet and up: wider content column, floating centered nav. */
+@media (min-width: 680px) {
+  :root {
+    --shell-width: min(720px, calc(100% - 56px));
+  }
+
   .app-header-inner,
   .app-main,
   .answer-banner {
-    width: min(560px, calc(100% - 48px));
+    width: var(--shell-width);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .stat-card-wide {
+    grid-column: auto;
+  }
+
+  .discover-results {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bottom-nav {
     right: 50%;
     left: auto;
-    width: min(560px, calc(100% - 48px));
-    margin-bottom: 16px;
+    width: min(460px, calc(100% - 56px));
+    margin-bottom: 18px;
+    padding-bottom: 0;
     transform: translateX(50%);
     border: 1px solid var(--line);
-    border-radius: 20px;
+    border-radius: 22px;
     box-shadow: var(--shadow-md);
   }
 
   .app-main {
-    padding-bottom: calc(var(--nav-height) + 44px);
+    padding-bottom: calc(var(--nav-height) + 52px);
+  }
+}
+
+/* Laptop and up: roomier column and three-up discover grid. */
+@media (min-width: 1024px) {
+  :root {
+    --shell-width: min(960px, calc(100% - 96px));
+  }
+
+  .app-header-inner {
+    min-height: 72px;
+  }
+
+  .tab-title {
+    font-size: 1.2rem;
+  }
+
+  .app-main {
+    padding-top: 26px;
+  }
+
+  .discover-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Songs: two-column list on wide screens for density. */
+  .entry-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 28px;
+  }
+
+  .entry-row {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .discover-form {
+    top: 72px;
+  }
+}
+
+/* Large desktop: cap width and keep everything comfortably centered. */
+@media (min-width: 1440px) {
+  :root {
+    --shell-width: min(1100px, calc(100% - 120px));
+  }
+}
+
+/* Taller discover grid cards should stretch evenly in a row. */
+@media (min-width: 680px) {
+  .discover-results {
+    align-items: stretch;
+  }
+
+  .suggestion-card {
+    align-items: flex-start;
+  }
+
+  .suggestion-add {
+    align-self: center;
   }
 }

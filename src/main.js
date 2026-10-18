@@ -766,7 +766,20 @@ async function handleDiscoverSubmit(event) {
     const { data, error } = await supabase.functions.invoke("discover-songs", {
       body: { prompt },
     });
-    if (error) throw error;
+
+    // A non-2xx edge response arrives as a FunctionsHttpError. Read its JSON
+    // body so we can show the real reason (missing key, AI down, etc.).
+    if (error) {
+      let detail = error;
+      if (typeof error.context?.json === "function") {
+        try {
+          detail = await error.context.json();
+        } catch {
+          // Keep the original error when the body is not JSON.
+        }
+      }
+      throw detail;
+    }
 
     const suggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
     renderSuggestions(suggestions);
